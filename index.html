@@ -12,108 +12,142 @@
             color: var(--tg-theme-text-color, #000000);
             padding: 20px;
             margin: 0;
-            padding-bottom: 80px; /* Отступ для кнопки ТГ */
+            padding-bottom: 80px;
         }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; }
         input, select {
-            width: 100%;
-            padding: 12px;
+            width: 100%; padding: 12px;
             border: 1px solid var(--tg-theme-hint-color, #ccc);
-            border-radius: 8px;
+            border-radius: 8px; font-size: 16px;
             background-color: var(--tg-theme-secondary-bg-color, #f4f4f5);
             color: var(--tg-theme-text-color, #000000);
             box-sizing: border-box;
-            font-size: 16px;
         }
+        /* Стили для ленты рецептов */
+        #screen-feed { display: none; }
+        .recipe-card {
+            background-color: var(--tg-theme-secondary-bg-color, #f4f4f5);
+            border-radius: 12px; padding: 15px; margin-bottom: 15px;
+            cursor: pointer; transition: 0.2s;
+        }
+        .recipe-card:active { opacity: 0.7; }
+        .recipe-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 18px; }
+        .recipe-meta { font-size: 14px; color: var(--tg-theme-hint-color, #888); margin-top: 5px; }
+        .recipe-details {
+            display: none; margin-top: 15px; padding-top: 15px;
+            border-top: 1px solid var(--tg-theme-hint-color, #ccc);
+            font-size: 14px; line-height: 1.5;
+        }
+        .category-title { margin-top: 25px; margin-bottom: 10px; border-bottom: 2px solid #2481cc; display: inline-block; padding-bottom: 3px; }
     </style>
 </head>
 <body>
 
-    <h2>Твои параметры</h2>
-    
-    <div class="form-group">
-        <label for="gender">Пол:</label>
-        <select id="gender">
-            <option value="male">Мужской</option>
-            <option value="female">Женский</option>
-        </select>
+    <!-- ЭКРАН 1: АНКЕТА -->
+    <div id="screen-form">
+        <h2>Твои параметры</h2>
+        <div class="form-group">
+            <label>Пол:</label>
+            <select id="gender"><option value="male">Мужской</option><option value="female">Женский</option></select>
+        </div>
+        <div class="form-group"><label>Возраст:</label><input type="number" id="age" placeholder="25"></div>
+        <div class="form-group"><label>Вес (кг):</label><input type="number" id="weight" placeholder="70"></div>
+        <div class="form-group"><label>Рост (см):</label><input type="number" id="height" placeholder="175"></div>
+        <div class="form-group">
+            <label>Активность:</label>
+            <select id="activity">
+                <option value="1.2">Сидячий образ</option>
+                <option value="1.375">Легкая активность</option>
+                <option value="1.55">Средняя активность</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Цель:</label>
+            <select id="goal">
+                <option value="lose">Похудеть (-20%)</option>
+                <option value="keep">Поддерживать вес</option>
+                <option value="gain">Набрать массу (+15%)</option>
+            </select>
+        </div>
     </div>
 
-    <div class="form-group">
-        <label for="age">Возраст (лет):</label>
-        <input type="number" id="age" placeholder="Например: 25">
-    </div>
-
-    <div class="form-group">
-        <label for="weight">Вес (кг):</label>
-        <input type="number" id="weight" placeholder="Например: 70">
-    </div>
-
-    <div class="form-group">
-        <label for="height">Рост (см):</label>
-        <input type="number" id="height" placeholder="Например: 175">
-    </div>
-
-    <div class="form-group">
-        <label for="activity">Уровень активности:</label>
-        <select id="activity">
-            <option value="1.2">Сидячий образ (почти нет активности)</option>
-            <option value="1.375">Легкая активность (тренировки 1-3 раза в неделю)</option>
-            <option value="1.55">Средняя активность (тренировки 3-5 раз в неделю)</option>
-            <option value="1.725">Высокая активность (тренировки каждый день)</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="goal">Твоя цель:</label>
-        <select id="goal">
-            <option value="lose">Похудеть (-20%)</option>
-            <option value="keep">Поддерживать вес</option>
-            <option value="gain">Набрать массу (+15%)</option>
-        </select>
+    <!-- ЭКРАН 2: ЛЕНТА БЛЮД -->
+    <div id="screen-feed">
+        <h2>Твое меню <span id="cal-result" style="color:#2481cc;"></span></h2>
+        <p style="font-size:14px; color:gray;">Нажми на блюдо, чтобы посмотреть рецепт.</p>
+        <div id="recipes-container"></div>
     </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand(); 
-
         tg.MainButton.textColor = '#ffffff';
         tg.MainButton.color = '#2481cc';
         tg.MainButton.setText('РАССЧИТАТЬ НОРМУ');
         tg.MainButton.show();
 
+        // База рецептов для отображения на фронтенде
+        const recipesDB = [
+            { id: 1, type: "Завтрак", name: "Овсяноблин с сыром", cals: 350, time: "10 мин", ingredients: "Овсянка, яйцо, молоко, сыр.", steps: "1. Смешайте яйцо, овсянку и молоко.\n2. Вылейте на сковороду как блин.\n3. Посыпьте сыром и сложите пополам." },
+            { id: 2, type: "Завтрак", name: "Сырники классические", cals: 420, time: "20 мин", ingredients: "Творог 5%, яйцо, мука рисовая.", steps: "1. Смешайте творог с яйцом и мукой.\n2. Сформируйте шарики.\n3. Обжарьте с двух сторон до корочки." },
+            { id: 3, type: "Обед", name: "Курица с гречкой", cals: 500, time: "25 мин", ingredients: "Куриное филе, гречка, масло.", steps: "1. Отварите гречку.\n2. Нарежьте филе кубиками и обжарьте.\n3. Смешайте мясо с гарниром." },
+            { id: 4, type: "Обед", name: "Паста Болоньезе (ПП)", cals: 550, time: "30 мин", ingredients: "Макароны тв. сортов, фарш говяжий, томаты.", steps: "1. Отварите макароны.\n2. Обтушите фарш с протертыми томатами.\n3. Подавайте вместе." },
+            { id: 5, type: "Ужин", name: "Легкий салат с тунцом", cals: 280, time: "10 мин", ingredients: "Тунец консервированный, огурец, яйцо, листья салата.", steps: "1. Нарежьте овощи и вареное яйцо.\n2. Добавьте тунец без сока.\n3. Заправьте лимонным соком." }
+        ];
+
+        let currentScreen = 'form';
+        let recommendedPlan = [1, 3, 5]; // ID блюд по умолчанию (овсяноблин, курица, салат)
+
         Telegram.WebApp.onEvent('mainButtonClicked', function() {
-            let gender = document.getElementById('gender').value;
-            let age = document.getElementById('age').value;
-            let weight = document.getElementById('weight').value;
-            let height = document.getElementById('height').value;
-            let activity = document.getElementById('activity').value;
-            let goal = document.getElementById('goal').value;
+            if (currentScreen === 'form') {
+                // ПЕРЕХОД 1: Считаем калории и показываем ленту
+                let age = document.getElementById('age').value;
+                let weight = document.getElementById('weight').value;
+                let height = document.getElementById('height').value;
+                
+                if (!age || !weight || !height) { tg.showAlert("Заполни все поля!"); return; }
 
-            if (!age || !weight || !height) {
-                tg.showAlert("Пожалуйста, заполни возраст, вес и рост!");
-                return;
+                document.getElementById('screen-form').style.display = 'none';
+                document.getElementById('screen-feed').style.display = 'block';
+                document.getElementById('cal-result').innerText = "(~1800 ккал)"; // Пример
+                
+                renderFeed();
+                
+                currentScreen = 'feed';
+                tg.MainButton.setText('ПОЛУЧИТЬ МЕНЮ НА НЕДЕЛЮ В БОТ');
+            } else {
+                // ПЕРЕХОД 2: Отправляем боту запрос на список покупок
+                let data = { action: 'generate_week', recipe_ids: recommendedPlan };
+                tg.sendData(JSON.stringify(data)); 
             }
-
-            let data = {
-                action: 'calculate',
-                gender: gender,
-                age: age,
-                weight: weight,
-                height: height,
-                activity: activity,
-                goal: goal
-            };
-
-            tg.sendData(JSON.stringify(data)); 
         });
+
+        function renderFeed() {
+            const container = document.getElementById('recipes-container');
+            container.innerHTML = '';
+            
+            recipesDB.forEach(r => {
+                let card = document.createElement('div');
+                card.className = 'recipe-card';
+                card.innerHTML = `
+                    <div class="recipe-header">
+                        <span>${r.name}</span>
+                        <span style="color:#2481cc;">${r.cals} ккал</span>
+                    </div>
+                    <div class="recipe-meta">${r.type} • ⏱ ${r.time}</div>
+                    <div class="recipe-details" id="details-${r.id}">
+                        <b>Продукты:</b> ${r.ingredients}<br><br>
+                        <b>Рецепт:</b><br>${r.steps.replace(/\n/g, '<br>')}
+                    </div>
+                `;
+                card.onclick = function() {
+                    let details = document.getElementById(`details-${r.id}`);
+                    details.style.display = details.style.display === 'block' ? 'none' : 'block';
+                };
+                container.appendChild(card);
+            });
+        }
     </script>
 </body>
 </html>
